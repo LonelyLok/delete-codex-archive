@@ -11,14 +11,15 @@ Open the Command Palette and run the extension's commands to list or delete arch
 
 ## How to build and install locally
 1. Clone the project
-2. Run npm install
-3. Run npm run compile
-4. Install vsce: npm install -g @vscode/vsce
-5. Run vsce package
-6. A .vsix file will be created in the project root
-7. In VS Code, open the Command Palette (Ctrl+Shift+P / Cmd+Shift+P)
-8. Run Extensions: Install from VSIX...
-9. Select the generated .vsix file
+2. Run `npm install`
+3. Run `npm run compile`
+4. Install `vsce`:
+   `npm install -g @vscode/vsce`
+5. Run `vsce package`
+6. A `.vsix` file will be created in the project root
+7. In VS Code, open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
+8. Run **Extensions: Install from VSIX...**
+9. Select the generated `.vsix` file
 10. Reload VS Code when prompted
 
 ## Disclaimer:
