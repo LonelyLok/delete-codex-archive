@@ -102,7 +102,7 @@ class MyTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
             .split("\n").filter(line => line.trim() !== "").map(line => JSON.parse(line));
           const marker = "My request for Codex:";
           const targetMessage = messages.find(msg => msg.type === 'event_msg' && msg?.payload?.type === 'user_message' && msg?.payload?.message?.includes(marker))
-          let summary = '';
+          let summary = e.name;
           if (targetMessage) {
             const idx = targetMessage.payload.message.indexOf(marker);
             if (idx !== -1) {
