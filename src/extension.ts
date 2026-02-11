@@ -57,11 +57,40 @@ async function isDirExists(path: string): Promise<boolean> {
   }
 }
 
+async function walkDirectoryRecursively(rootPath: string): Promise<string[]> {
+  const entries = await fs.readdir(rootPath, { withFileTypes: true });
+  const results = await Promise.all(
+    entries.map(async (entry) => {
+      const fullPath = path.join(rootPath, entry.name);
+
+      if (entry.isDirectory()) {
+        return walkDirectoryRecursively(fullPath);
+      }
+
+      if (entry.isFile()) {
+        return [fullPath];
+      }
+
+      return [];
+    })
+  );
+
+  return results.flat();
+}
+
+async function findJsonlFiles(rootPath: string): Promise<string[]> {
+  const allFiles = await walkDirectoryRecursively(rootPath);
+  return allFiles.filter((filePath) => filePath.endsWith(".jsonl"));
+}
+
+
 class MyTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
   private _onDidChangeTreeData = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
   private isCodexArchivedSessionsDirPresent: boolean = false;
+  private isCodexSessionsDirPresent: boolean = false;
   private codexArchivedSessionsPath: string = '';
+  private codexSessionsPath: string = '';
 
   async init() {
     const archivedSessionsPath = path.join(
@@ -69,22 +98,48 @@ class MyTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
       ".codex",
       "archived_sessions"
     );
-    const exists = await isDirExists(archivedSessionsPath);
-    this.isCodexArchivedSessionsDirPresent = exists;
+    const sessionsPath = path.join(
+      os.homedir(),
+      ".codex",
+      "sessions"
+    );
+    const isArchivedExists = await isDirExists(archivedSessionsPath);
+    this.isCodexArchivedSessionsDirPresent = isArchivedExists;
     this.codexArchivedSessionsPath = archivedSessionsPath;
+
+    const isSessionsExists = await isDirExists(sessionsPath);
+    this.isCodexSessionsDirPresent = isSessionsExists;
+    this.codexSessionsPath = sessionsPath;
   }
 
   async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
     if (!element) {
-      const headline = new vscode.TreeItem(
+      const headlineForSessions = new vscode.TreeItem(
+        `Codex Sessions Directory ${this.isCodexSessionsDirPresent ? 'found' : 'not found'}`,
+        vscode.TreeItemCollapsibleState.Expanded
+      );
+      headlineForSessions.contextValue = 'headlineForSessions';
+      const headlineForArchived = new vscode.TreeItem(
         `Codex Archived Sessions Directory ${this.isCodexArchivedSessionsDirPresent ? 'found' : 'not found'}`,
         vscode.TreeItemCollapsibleState.Expanded
       );
-      headline.contextValue = 'headline';
-      return [headline];
+      headlineForArchived.contextValue = 'headlineForArchived';
+      return [headlineForSessions, headlineForArchived];
     }
 
-    if (element.contextValue === 'headline') {
+    if (element.contextValue === 'headlineForSessions') {
+      if (!this.isCodexSessionsDirPresent) {
+        return [];
+      }
+      const jsonlFiles = await findJsonlFiles(this.codexSessionsPath);
+      return jsonlFiles.map(filePath => {
+        const fileName = path.basename(filePath);
+        const fileItem = new FileTreeItem({ name: fileName, path: filePath, summary: fileName });
+        return fileItem;
+      })
+    }
+
+    if (element.contextValue === 'headlineForArchived') {
       if (!this.isCodexArchivedSessionsDirPresent) {
         return [];
       }
