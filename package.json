@@ -18,6 +18,10 @@
         "title": "Delete file",
         "icon": "$(remove-close)"
       },
+        {
+        "command": "DeleteCodexArchive.deleteAllFiles",
+        "title": "Delete All files"
+      },
       {
         "command": "DeleteCodexArchive.refreshView",
         "title": "Refresh view",
@@ -44,6 +48,11 @@
     },
     "menus": {
       "view/item/context": [
+        {
+          "command": "DeleteCodexArchive.deleteAllFiles",
+          "when": "view == DeleteCodexArchiveView && (viewItem == headlineForArchived || viewItem == headlineForSessions)",
+          "group": "navigation"
+        },
         {
           "command": "DeleteCodexArchive.deleteFile",
           "when": "view == DeleteCodexArchiveView && viewItem == fileTreeItem",

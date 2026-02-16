@@ -27,8 +27,40 @@ export async function activate(context: vscode.ExtensionContext) {
       if (item?.file?.path) {
         await fs.unlink(item.file.path);
         vscode.window.showInformationMessage(`Removed File ${item.file.name}`);
+        treeDataProvider.refresh();
       }
-      treeDataProvider.refresh();
+    })
+  )
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(`${extPrefix}.deleteAllFiles`, async (headline: HeadlineTreeItem) => {
+      if (headline.childFiles.length > 0) {
+        const counter: number[] = [];
+        await Promise.all(headline.childFiles.map(async (filePath) => {
+          try {
+            await fs.unlink(filePath);
+            counter.push(1)
+          } catch (err) {
+            console.log(`Failed to delete file ${filePath}:`, err);
+            counter.push(0);
+          }
+        }))
+        const countMap = counter.reduce((acc, val) => {
+          if (val === 1) {
+            acc.success += 1;
+          } else {
+            acc.failed += 1;
+          }
+          return acc;
+        }, {
+          success: 0,
+          failed: 0
+        })
+        vscode.window.showInformationMessage(`Removed ${countMap.success}, failed to remove ${countMap.failed} files under ${headline.label}`);
+        treeDataProvider.refresh();
+      } else {
+        vscode.window.showInformationMessage(`No files to delete under ${headline.label}`);
+      }
     })
   )
 }
@@ -46,6 +78,17 @@ class FileTreeItem extends vscode.TreeItem {
     );
     this.file = fileObj;
     this.contextValue = "fileTreeItem";
+  }
+}
+
+class HeadlineTreeItem extends vscode.TreeItem {
+  childFiles: string[];
+  constructor({ name, contextValue, childFiles }: { name: string, contextValue: string, childFiles: string[] }) {
+    super(
+      name, vscode.TreeItemCollapsibleState.Expanded
+    );
+    this.childFiles = childFiles;
+    this.contextValue = contextValue;
   }
 }
 
@@ -92,6 +135,8 @@ class MyTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
   private isCodexSessionsDirPresent: boolean = false;
   private codexArchivedSessionsPath: string = '';
   private codexSessionsPath: string = '';
+  private headlineForSessions: HeadlineTreeItem | null = null;
+  private headlineForArchived: HeadlineTreeItem | null = null;
 
   async init() {
     const archivedSessionsPath = path.join(
@@ -119,16 +164,18 @@ class MyTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
       mainHeadline.contextValue = 'mainHeadline';
 
 
-      const headlineForSessions = new vscode.TreeItem(
-        `Codex Sessions Directory ${this.isCodexSessionsDirPresent ? 'found' : 'not found'}`,
-        vscode.TreeItemCollapsibleState.Expanded
-      );
-      headlineForSessions.contextValue = 'headlineForSessions';
-      const headlineForArchived = new vscode.TreeItem(
-        `Codex Archived Sessions Directory ${this.isCodexArchivedSessionsDirPresent ? 'found' : 'not found'}`,
-        vscode.TreeItemCollapsibleState.Expanded
-      );
-      headlineForArchived.contextValue = 'headlineForArchived';
+      const headlineForSessions = new HeadlineTreeItem({
+        name: `Codex Sessions Directory ${this.isCodexSessionsDirPresent ? 'found' : 'not found'}`,
+        contextValue: 'headlineForSessions',
+        childFiles: []
+      });
+      this.headlineForSessions = headlineForSessions;
+      const headlineForArchived = new HeadlineTreeItem({
+        name: `Codex Archived Sessions Directory ${this.isCodexArchivedSessionsDirPresent ? 'found' : 'not found'}`,
+        contextValue: 'headlineForArchived',
+        childFiles: []
+      });
+      this.headlineForArchived = headlineForArchived;
       return [mainHeadline, headlineForSessions, headlineForArchived];
     }
 
@@ -137,6 +184,9 @@ class MyTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
         return [];
       }
       const jsonlFiles = await findJsonlFiles(this.codexSessionsPath);
+      if (this.headlineForSessions) {
+        this.headlineForSessions.childFiles = jsonlFiles;
+      }
       return jsonlFiles.map(filePath => {
         const fileName = path.basename(filePath);
         const fileItem = new FileTreeItem({ name: fileName, path: filePath, summary: fileName });
@@ -175,6 +225,9 @@ class MyTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
             path: filePath
           }
         }));
+      if (this.headlineForArchived) {
+        this.headlineForArchived.childFiles = files.map(f => f.path);
+      }
       return files.map(fileObj => {
         const fileItem = new FileTreeItem(fileObj);
         return fileItem;
