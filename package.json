@@ -51,7 +51,7 @@
         },
         {
           "command": "DeleteCodexArchive.refreshView",
-          "when": "viewItem == headline",
+          "when": "viewItem == mainHeadline",
           "group": "inline"
         }
       ]

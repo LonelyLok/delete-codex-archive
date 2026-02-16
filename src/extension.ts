@@ -16,7 +16,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
 
   context.subscriptions.push(
-    vscode.commands.registerCommand(`${extPrefix}.refreshView`, () => {
+    vscode.commands.registerCommand(`${extPrefix}.refreshView`, async () => {
+      await treeDataProvider.init();
       treeDataProvider.refresh();
     })
   );
@@ -114,6 +115,10 @@ class MyTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
   async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
     if (!element) {
+      const mainHeadline = new vscode.TreeItem("Codex Sessions and Archives", vscode.TreeItemCollapsibleState.None);
+      mainHeadline.contextValue = 'mainHeadline';
+
+
       const headlineForSessions = new vscode.TreeItem(
         `Codex Sessions Directory ${this.isCodexSessionsDirPresent ? 'found' : 'not found'}`,
         vscode.TreeItemCollapsibleState.Expanded
@@ -124,7 +129,7 @@ class MyTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
         vscode.TreeItemCollapsibleState.Expanded
       );
       headlineForArchived.contextValue = 'headlineForArchived';
-      return [headlineForSessions, headlineForArchived];
+      return [mainHeadline, headlineForSessions, headlineForArchived];
     }
 
     if (element.contextValue === 'headlineForSessions') {
